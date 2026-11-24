@@ -8,14 +8,14 @@ def receipt(dirty,ticket):
 
 def test_complete_stock_balances(dirty):
     t=dirty['balance']['totals']
-    assert t['opening_g']+t['inbound_g']==t['issued_g']+t['closing_g']+t['difference_g']==510000
+    assert t['opening_g']+t['inbound_g']==t['issued_g']+t['closing_g']+t['difference_g']==350000
     assert t['difference_g']==1400
 
 
 def test_unclosed_truck_has_visible_mass(dirty):
     r=dirty['balance']['stocks'][2]
     assert (r['truck'],r['issued_g'],r['difference_g'])==('FT-23',16000,None)
-    assert dirty['balance']['unclosed_mass_g']==16000
+    assert dirty['balance']['unclosed_mass_g']==104000
 
 
 def test_variance_exactly_at_allowed_edge(dirty):
@@ -43,4 +43,6 @@ def test_faulty_inbound_prevents_complete_stock():
 
 def test_clean_has_no_variance_and_no_open_tickets(client):
     out=client.get('/api/balance?sample=clean').json
-    assert out['states']=={'MATCH':4} and out['totals']['difference_g']==0
+    assert out['states']=={'MATCH':4,'NO_RECEIPT':1,'MERGED_DUPLICATE':1}
+    assert out['totals']['difference_g']==0
+    assert out['confirmed_overlap_groups']==1 and out['pending_overlap_groups']==0

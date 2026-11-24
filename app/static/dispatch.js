@@ -21,11 +21,15 @@ function bind(selector, submit) {
 }
 
 bind('#archive', async form => {
-  const files = Object.fromEntries(['tickets','receipts','stock'].map(id => [id,document.getElementById(id).value]));
-  const values = Object.values(files);
-  if (values.some(Boolean) && !values.every(Boolean)) throw new Error('请填全三份 CSV');
+  const requiredIds = ['tickets','receipts','stock'];
+  const files = Object.fromEntries(
+    ['tickets','receipts','stock','reprints'].map(id => [id,document.getElementById(id)?.value ?? ''])
+  );
+  const required = requiredIds.map(id => files[id]);
+  if (required.some(Boolean) && !required.every(Boolean)) throw new Error('请填全三份 CSV');
+  if (!files.reprints) delete files.reprints;
   const sample = form.dataset.sample;
-  const ack = await post('/api/shifts', values.every(Boolean) ? files : {sample});
+  const ack = await post('/api/shifts', required.every(Boolean) ? files : {sample});
   location.assign('/ops/sign?' + new URLSearchParams({sample,batch:ack.batch}));
 });
 

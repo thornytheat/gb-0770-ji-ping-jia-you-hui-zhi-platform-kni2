@@ -21,9 +21,9 @@ def test_certificate_matches_snapshot(client):
 def test_signed_evidence_retains_unresolved_items(client):
     addr=archived(client)
     result=client.post(addr+'/sign').json
-    assert (result['open_items'],result['held_trucks'])==(12,1)
+    assert (result['open_items'],result['held_trucks'])==(8,2)
     evidence=client.get(addr+'/export').json['slip']
-    assert evidence['conservation']['unclosed_mass_g']==16000
+    assert evidence['conservation']['unclosed_mass_g']==104000
     assert evidence['sources']['receipts']['isolated']==2
 
 

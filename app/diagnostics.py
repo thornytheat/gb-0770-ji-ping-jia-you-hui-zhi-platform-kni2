@@ -9,6 +9,9 @@ REASONS = {
     'TEMPERATURE':'油温超出模型范围', 'FUEL':'未配置该油种', 'NO_RECEIPT':'缺少签收回执',
     'SIGN_TRUCK':'计量票与回执车号不一致', 'NO_METER':'签收缺少可计发放票', 'SIGN_DIFF':'签收差超过允许误差',
     'STOCK_ANCHORS':'缺少唯一的期初或期末库存', 'NO_BATCH':'没有此交班归档', 'NOT_SIGNED':'证据单尚未签发',
+    'OVERLAP_PENDING':'重叠票缺少重打凭据，暂留待核，不出库存盈亏',
+    'MERGED_DUPLICATE':'重打凭据确认同一笔发油，已并入保留票只扣一次库存',
+    'EVIDENCE':'重打凭据指向的计量票无法采信或车号不符',
 }
 
 

@@ -9,7 +9,7 @@ def one(dirty,ticket):
 def test_decimal_small_tickets_sum_exactly(dirty):  # TRAP-10
     grams=[one(dirty,id)['standard']['mass_g'] for id in ('T08','T09','T10')]
     assert grams==[80,80,80] and sum(grams)==240
-    assert dirty['mass']['mass_g']==263600
+    assert dirty['mass']['mass_g']==455600
 
 
 def test_density_units_normalized(dirty):  # TRAP-15

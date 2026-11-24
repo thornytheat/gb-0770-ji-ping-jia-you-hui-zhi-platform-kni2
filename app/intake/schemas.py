@@ -6,7 +6,10 @@ COLUMNS = {
     'tickets':('ticket','truck','opened','closed','start_l','stop_l','event','fuel','rho','rho_unit','temp_c'),
     'receipts':('ticket','truck','signed_kg','document'),
     'stock':('truck','movement','kind','kg'),
+    'reprints':('reprint','truck','tickets','document'),
 }
+REQUIRED_CHANNELS = ('tickets','receipts','stock')
+OPTIONAL_CHANNELS = ('reprints',)
 EMPTY_MARKERS = {'','-','N/A','NULL','未知'}
 DECIMAL_TEXT = re.compile(r'[+-]?[0-9]{1,10}(?:\.[0-9]{1,6})?')
 
@@ -40,6 +43,11 @@ def convert_fields(row, channel):
                 row[key] = format(amount(row[key],signed=key=='temp_c').normalize(),'f')
         elif channel == 'receipts':
             row['signed_g'] = int(amount(row.pop('signed_kg'),exact_grams=True)*1000)
+        elif channel == 'reprints':
+            members = [part.strip() for part in row.pop('tickets').split(';')]
+            if len(members) < 2 or any(not part for part in members):
+                raise ValueError
+            row['members'] = members
         else:
             if row['kind'] not in ('opening','inbound','closing'):
                 raise ValueError

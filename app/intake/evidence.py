@@ -2,13 +2,17 @@ from collections import Counter, defaultdict
 
 from app.diagnostics import RampError, detail
 from .reader import rows_from
-from .schemas import COLUMNS, convert_fields
+from .schemas import COLUMNS, OPTIONAL_CHANNELS, convert_fields
+
+IDENTITY = {'stock':lambda data:(data['truck'],data['movement']),
+            'reprints':lambda data:data['reprint']}
 
 
 def channel_report(channel, raw):
     groups = defaultdict(list)
     rejected, repeated = [], []
     count, segments = 0,1
+    key_of = IDENTITY.get(channel,lambda data:data['ticket'])
     for line,header,row in rows_from(raw,COLUMNS[channel]):
         if row==header:
             segments += 1
@@ -20,8 +24,7 @@ def channel_report(channel, raw):
             if len(row)!=len(header):
                 raise ValueError('WIDTH')
             data = convert_fields({key:value.strip() for key,value in zip(header,row)},channel)
-            identity = (data['truck'],data['movement']) if channel=='stock' else data['ticket']
-            groups[identity].append({'line':line,'data':data,'raw':row})
+            groups[key_of(data)].append({'line':line,'data':data,'raw':row})
         except ValueError as exc:
             origin = dict(zip(header,row)) if len(row)==len(header) else {}
             rejected.append(dict(detail(str(exc)),line=line,raw=row,
@@ -43,7 +46,17 @@ def channel_report(channel, raw):
             'reasons':dict(Counter(row['code'] for row in rejected))}
 
 
+def blank_sheet():
+    return {'input':0,'accepted':0,'isolated':0,'duplicate':0,'segments':0,
+            'rows':[],'quarantine':[],'repeat_sources':[],'reasons':{}}
+
+
 def admit(files):
-    sheets = {name:channel_report(name,files[name]) for name in COLUMNS}
+    sheets = {}
+    for name in COLUMNS:
+        if name in OPTIONAL_CHANNELS and name not in files:
+            sheets[name] = blank_sheet()
+        else:
+            sheets[name] = channel_report(name,files[name])
     totals = {key:sum(sheet[key] for sheet in sheets.values()) for key in ('input','accepted','isolated','duplicate')}
     return dict(totals,sheets=sheets)

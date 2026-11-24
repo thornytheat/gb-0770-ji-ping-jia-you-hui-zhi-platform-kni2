@@ -1,13 +1,19 @@
 from flask import request
 from app.configuration import SAMPLE_PATH
 from app.diagnostics import RampError
-from app.intake.schemas import COLUMNS
+from app.intake.schemas import COLUMNS, OPTIONAL_CHANNELS, REQUIRED_CHANNELS
 
 
 def sample_set(name):
     if name not in ('clean','dirty'):
         raise RampError('SAMPLE',404)
-    return {key:(SAMPLE_PATH/f'{name}-{key}.csv').read_bytes() for key in COLUMNS}
+    bundle = {}
+    for key in COLUMNS:
+        path = SAMPLE_PATH/f'{name}-{key}.csv'
+        if key in OPTIONAL_CHANNELS and not path.exists():
+            continue
+        bundle[key] = path.read_bytes()
+    return bundle
 
 
 def submitted():
@@ -16,7 +22,10 @@ def submitted():
     body = request.get_json(silent=True)
     if isinstance(body,dict) and set(body)=={'sample'} and isinstance(body['sample'],str):
         return sample_set(body['sample'])
-    if not (isinstance(body,dict) and body.keys()==COLUMNS.keys() and all(isinstance(v,str) for v in body.values())):
+    required = set(REQUIRED_CHANNELS)
+    allowed = set(COLUMNS)
+    if not (isinstance(body,dict) and required <= body.keys() <= allowed
+            and all(isinstance(v,str) for v in body.values())):
         raise RampError('BUNDLE')
     try:
         return {key:value.encode() for key,value in body.items()}

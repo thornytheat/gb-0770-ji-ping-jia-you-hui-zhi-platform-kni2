@@ -1,15 +1,20 @@
 {% set report=data.balance %}
 {% set totals=report.totals %}
-<div class="sticky-balance"><span>已闭合库存车辆 <b>{{ report.complete_trucks }}</b></span><span>库存差额 <b>{{ totals.difference_g|kg }} kg</b></span><span>逐票签收净差 <b>{{ report.receipt_delta_g|kg }} kg</b></span></div>
+<div class="sticky-balance"><span>已闭合库存车辆 <b>{{ report.complete_trucks }}</b></span><span>库存差额 <b>{{ totals.difference_g|kg }} kg</b></span><span>逐票签收净差 <b>{{ report.receipt_delta_g|kg }} kg</b></span><span>重叠待核争议车 <b>{{ report.disputed_trucks|length }}</b> 辆</span></div>
 <div class="double-book"><section class="panel stock-book"><h3>罐车收发双账</h3>
 <div class="gauges">
-{% for truck in report.stocks %}<article class="gauge-card"><h4>{{ truck.truck }}</h4><div class="gauge" aria-hidden="true">
+{% for truck in report.stocks %}<article class="gauge-card {{ 'disputed' if truck.disputed }}"><h4>{{ truck.truck }}{% if truck.disputed %} <em>争议待核</em>{% endif %}</h4><div class="gauge" aria-hidden="true">
 {% if truck.complete %}{% set total=truck.opening_g+truck.inbound_g %}{% if total>0 %}<span class="gauge-fill" style="--fill:{{ [100,100*truck.closing_g/total]|min }}%"></span>{% endif %}{% endif %}
-</div><dl><dt>期初</dt><dd>{{ truck.opening_g|kg }}</dd><dt>入车</dt><dd>{{ truck.inbound_g|kg }}</dd><dt>发放</dt><dd>{{ truck.issued_g|kg }}</dd><dt>期末</dt><dd>{{ truck.closing_g|kg }}</dd><dt>差额</dt><dd>{{ truck.difference_g|kg }}</dd></dl>
-<small>{% if truck.complete %}库存行 {{ truck.source_lines|join('、') }}{% else %}{{ truck.fault.note }}{% if truck.isolated_lines %} · 行 {{ truck.isolated_lines|join('、') }}{% endif %}{% endif %}</small></article>{% endfor %}
+</div><dl><dt>期初</dt><dd>{{ truck.opening_g|kg }}</dd><dt>入车</dt><dd>{{ truck.inbound_g|kg }}</dd><dt>发放(扣账)</dt><dd>{{ truck.issued_g|kg }}</dd><dt>已确认发油</dt><dd>{{ truck.confirmed_mass_g|kg }}</dd><dt>期末</dt><dd>{{ truck.closing_g|kg }}</dd><dt>差额</dt><dd>{{ truck.difference_g|kg }}</dd></dl>
+<small>{% if truck.disputed %}{{ truck.fault.note }}{% elif truck.complete %}库存行 {{ truck.source_lines|join('、') }}{% else %}{{ truck.fault.note }}{% if truck.isolated_lines %} · 行 {{ truck.isolated_lines|join('、') }}{% endif %}{% endif %}</small></article>{% endfor %}
 </div></section>
 <section class="panel sign-book"><h3>计量票与签收联</h3><div class="scroll"><table><thead><tr><th>加注票</th><th>计量 kg</th><th>签收 kg</th><th>差值 kg</th><th>复核记录</th></tr></thead><tbody>
 {% for row in report.receipts %}<tr class="{{ 'variance' if row.state!='MATCH' else '' }}"><td>{{ row.ticket }}</td><td>{{ row.meter_g|kg }}</td><td>{{ row.signed_g|kg }}</td><td>{{ row.variance_g|kg }}</td><td><details><summary>{{ row.reason }}</summary><p>计量行 {{ row.ticket_line }} / 签收行 {{ row.receipt_lines|join('、') or '—' }}</p><p>{{ row.document or '—' }} · 允许 ±{{ row.allowance_g|kg }} kg</p></details></td></tr>{% endfor %}
 </tbody></table></div>
 {% if report.unmatched_receipts %}<div class="orphan"><strong>孤立签收</strong>{% for row in report.unmatched_receipts %}<p>{{ row.ticket }} · {{ row.signed_g|kg }} kg · 签收行 {{ row.line }}</p>{% endfor %}</div>{% endif %}
 </section></div>
+<div class="double-book"><section class="panel"><h3>同车时间重叠票组</h3><div class="scroll"><table><thead><tr><th>重叠票组</th><th>罐车</th><th>判定</th><th>入账保留票</th><th>重打凭据行</th><th>原票行</th></tr></thead><tbody>
+{% for group in report.overlaps %}<tr class="{{ 'variance' if group.status=='PENDING' }}"><td>{{ group.tickets|join('、') }}</td><td>{{ group.truck }}</td><td>{% if group.status=='CONFIRMED' %}同一笔发油 · 只扣一次{% else %}凭据不足 · 留待核{% endif %}</td><td>{{ group.keeper or '—' }}</td><td>{{ group.evidence|join('、') or '—' }}</td><td>{{ group.lines|join('、') }}</td></tr>{% else %}<tr><td colspan="6">无时间重叠票（首尾相接照常核算）</td></tr>{% endfor %}
+</tbody></table></div>
+{% if report.disputed_trucks %}<div class="orphan"><strong>争议罐车暂不出库存盈亏</strong>{% for truck in report.disputed_trucks %}<p>{{ truck }} · 已确认发油仍见上方双账</p>{% endfor %}</div>{% endif %}</section>
+<section class="panel"><h3>重打凭据采信账</h3>{% for slip in report.reprints %}<details {{ 'open' if not slip.usable }}><summary>{{ slip.reprint or ('行 '~slip.line) }} · {{ slip.truck or '—' }} · {% if slip.usable %}已采信{% else %}{{ slip.fault.note }}{% endif %}</summary><p>凭据行 {{ slip.line }} · 指向票号 {{ slip.members|join('、') or '—' }} · 随件 {{ slip.document or '—' }}</p></details>{% else %}<p>本班没有重打凭据，重叠票一律留待核。</p>{% endfor %}</section></div>

@@ -11,8 +11,7 @@ def sign(book, batch):
         inserted = db.execute('INSERT INTO signatures VALUES (?,?) ON CONFLICT(digest) DO NOTHING',(batch,checksum)).rowcount
         saved = db.execute('SELECT checksum FROM signatures WHERE digest=?',(batch,)).fetchone()[0]
     return {'batch':batch,'checksum':saved,'reused':not bool(inserted),
-            'open_items':sum(n for key,n in evidence['conservation']['states'].items() if key!='MATCH') +
-                         len(evidence['conservation']['unmatched_receipts']),
+            'open_items':evidence['conservation']['open_items'],
             'held_trucks':evidence['conservation']['held_trucks']}
 
 
